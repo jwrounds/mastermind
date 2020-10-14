@@ -1,24 +1,3 @@
-# mastermind display mockup:
-#
-#  Y   P   T   G
-#  * | * | * | * |          
-#  G | R | R | P | [ W W     ]
-#  P | O | T | R | [ B W     ]
-#  P | T | G | O | [ W W W   ]
-#  Y | P | T | G | [ B B B B ]
-#
-# or:
-#
-#   Y  P  T  G
-#  [*--*--*--*]          
-#  [G--R--R--P] [W, W]
-#  [P--O--T--R] [B, W]
-#  [P--T--G--O] [W, W, W]
-#  [Y--P--T--G] [B, B, B, B]
-
-
-colors = ["red", "green", "turquoise", "yellow", "purple", "orange"]
-
 class Board
   attr_accessor :turn, :key_pegs, :game_board
 
@@ -45,10 +24,10 @@ class Player
 
   def make_guess board
     puts (  
-      " \nGuess the sequence by entering a combination of four letters representing each color ('r' for red, 'g' for green, 't' for turquoise, 'y' for yellow, 'p' for purple, or 'o' for orange): \n "
+      " \nGuess the sequence by entering a combination of four numbers: \n "
       )
-    new_guess = gets.chomp.upcase
-    if new_guess == "RULES"
+    new_guess = gets.chomp
+    if new_guess.upcase == "RULES"
       return "RULES"
     else
       self.guess = new_guess.split""
@@ -62,62 +41,77 @@ end
 class ComputerPlayer
   attr_reader :code
 
-  def initialize colors
-    @code = self.generate_code colors
+  def initialize 
+    @code = self.generate_code 
   end
 
-  def generate_code colors
+  def generate_code 
     random_code = []
-    4.times do 
-      random_code.push colors[rand 6][0].upcase
+    4.times do
+      number = (rand 6) + 1
+      random_code.push number.to_s
     end
     random_code
+  end
+
+  def crack_code board
+    set = []
+    (1111..6666).each do |num|
+      unless /[7890]/.match?(num)
+        set << num
+      end
+    end
+
   end
 end
 
 class Game
-  attr_reader :colors
+  attr_reader :numbers
   attr_accessor :turn, :code_cracked
 
-  def initialize color_set
-    @colors = color_set
+  def initialize 
+    @numbers = [1, 2, 3, 4, 5, 6]
     @turn = 0
     @code_cracked = false
+    @codebreaker = nil
   end
 
   def explain_rules
     puts (
-      " \nYou will have 10 turns to guess a random color sequence chosen by the computer. Colors can repeat. The available colors are #{self.colors.join(', ')} and each turn you will receive a white token for each matching color in the sequence. A black peg represents maching color and position.\n\nIf there are repeating colors in the sequence (ex. 'green, green, blue, blue') and your guess contains one of the correct colors out of sequence (ex. 'purple, red, orange, green'), you will receive only one white peg as feedback for that correctly guessed color. Likewise with a black peg if you guess one color out of miltiple repeats in the correct sequence (ex. 'green, orange, purple, red'). Type 'rules' to see this statement again.\n "
+      " \nYou will have 10 turns to guess a random number sequence chosen by the computer. Numbers can repeat. The available numbers are 1, 2, 3, 4, 5, 6, and each turn you will receive a white token for each matching number in the sequence. A black peg represents maching number and position.\n\nIf there are repeating numbers in the sequence (1112) and your guess contains one of the correct numbers out of sequence (ex. 2334), you will receive only one white peg as feedback for that correctly guessed number. Likewise with a black peg if you guess one number out of miltiple repeats in the correct sequence (5416). Type 'rules' to see this statement again.\n "
       ) 
   end
 
-  def check_guess code, guess, board, cache = {color: 0, color_and_space: 0}
+  def check_guess code, guess, board, cache = {number: 0, number_and_space: 0}
     
-    code.each_with_index do |code_color, i|
-      guess.each_with_index do |guess_color, j|
-        if code_color == guess_color && i == j
-          cache[:color_and_space] += 1
-          return self.check_guess(code.slice(i+1, code.length), guess.slice(j+1, guess.length), board, cache)
-        elsif code_color == guess_color
-          
-          cache[:color] += 1
-          return self.check_guess(code.slice(i+1, code.length), guess.slice(j+1, guess.length), board, cache)
+    code.each_with_index do |code_number, i|
+      guess.each_with_index do |guess_number, j|
+        if code_number == guess_number && i == j
+          cache[:number_and_space] += 1
+          new_code = code.slice(i+1, code.length)
+          new_guess = guess.slice(j+1, guess.length)
+          return self.check_guess(new_code, new_guess, board, cache)
+        elsif code_number == guess_number
+          cache[:number] += 1
+          new_code = code.slice(i+1, code.length)
+          new_guess = guess.slice(j+1, guess.length)
+          return self.check_guess(new_code, new_guess, board, cache)
         end
       end
     end
 
     pegs = []
-    cache[:color_and_space].times {pegs.push "B"}
-    cache[:color].times {pegs.push "W"}
+    cache[:number_and_space].times {pegs.push "B"}
+    cache[:number].times {pegs.push "W"}
     board.key_pegs.push pegs
-    if cache[:color_and_space] == 4
+    if cache[:number_and_space] == 4
       self.code_cracked = true
       puts "\nCode cracked! You win!" 
     end
     
   end
 
-  def run_turn player, code, board
+  def run_player_turn player, code, board
       p code
       board.display
       guess = player.make_guess board
@@ -128,14 +122,18 @@ class Game
         self.check_guess code, guess, board
       end
   end
+
+  def run_computer_turn computer, code, board
+
+  end
 end
 
-game = Game.new colors
+game = Game.new
 player = Player.new
-computer = ComputerPlayer.new colors
+computer = ComputerPlayer.new
 board = Board.new
 
 game.explain_rules
 until game.code_cracked == true
-    game.run_turn player, computer.code, board
+    game.run_player_turn player, computer.code, board
 end
