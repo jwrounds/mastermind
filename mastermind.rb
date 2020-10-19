@@ -10,7 +10,6 @@ module CodeComparisons
           code.insert(i, nil)
           guess.delete_at(i)
           guess.insert(i, nil)
-          p code, guess    
         end
       end
     end
@@ -20,14 +19,13 @@ module CodeComparisons
   def check_white code, guess, cache
     code.each_with_index do |code_number, i|
       guess.each_with_index do |guess_number, j|
-        if code_number && guess_number
-          if code_number == guess_number
+        if code[i] && guess[j]
+          if code[i] == guess[j]
             cache[:number] += 1
             code.delete_at(i)
             code.insert(i, nil)
             guess.delete_at(j)
             guess.insert(j, nil)
-            p code, guess
           end
         end
       end
@@ -65,16 +63,12 @@ class Player
 
   def initialize codemaker
     @codemaker = codemaker
-    if codemaker
-      self.generate_code
-    else
-      @guess = []
-    end
+    @guess = []
   end
 
   def make_guess board
     puts (  
-      " \nGuess the sequence by entering a combination of four numbers: \n ")
+      " \n> Guess the sequence by entering a combination of four numbers: \n ")
     new_guess = gets.chomp
     if new_guess.upcase == "RULES"
       return "RULES"
@@ -87,8 +81,8 @@ class Player
 
   def generate_code
     puts (
-      " \nPlease enter a four digit code using numbers from 1 to 6 (repeating numbers are okay):")
-    gets.chomp
+      " \n> Please enter a four digit code using numbers from 1 to 6 (repeating numbers are okay):\n ")
+    gets.chomp.split""
   end
 end
 
@@ -120,20 +114,27 @@ class ComputerPlayer
     set = []
     (1111..6666).each do |num|
       unless /[7890]/.match?(num.to_s)
-        set.push num.split""
+        set.push num.to_s.split""
       end
     end
     set
   end
 
-  def reduce_set white, black, code
+  def reduce_set white, black, pseudocode
     self.set.each_with_index do |num, i|
-      cache = self.compare_codes code, num
+      code_copy = []
+      pseudocode.each {|e| code_copy << e}
+      num_copy = []
+      num.each {|e| num_copy << e}
+      cache = self.compare_codes code_copy, num_copy
       unless cache[:number] == white && cache[:number_and_space] == black
         self.set.delete_at(i)
       end
     end
-    new_guess = self.set.first
+    
+    p self.set.length
+    new_guess = self.set.sample
+    return new_guess
   end
 
   def crack_code board, turn
@@ -150,7 +151,7 @@ class ComputerPlayer
     new_guess
   end
 end
-2
+
 class Game
   attr_reader :numbers
   attr_accessor :turn, :code_cracked
@@ -165,13 +166,17 @@ class Game
 
   def explain_rules
     puts (
-      " \nYou will have 10 turns to guess a random number sequence chosen by the computer. Numbers can repeat. The available numbers are 1, 2, 3, 4, 5, 6, and each turn you will receive a white token for each matching number in the sequence. A black peg represents maching number and position.\n\nIf there are repeating numbers in the sequence (1112) and your guess contains one of the correct numbers out of sequence (ex. 2334), you will receive only one white peg as feedback for that correctly guessed number. Likewise with a black peg if you guess one number out of miltiple repeats in the correct sequence (5416). Type 'rules' to see this statement again.\n "
+      " \n> You will have 10 turns to guess a random number sequence chosen by the computer. Numbers can repeat. The available numbers are 1, 2, 3, 4, 5, 6, and each turn you will receive a white token for each matching number in the sequence. A black peg represents maching number and position.\n\n> If there are repeating numbers in the sequence (1112) and your guess contains one of the correct numbers out of sequence (ex. 2334), you will receive only one white peg as feedback for that correctly guessed number. Likewise with a black peg if you guess one number out of miltiple repeats in the correct sequence (5416). Type 'rules' to see this statement again.\n "
       ) 
   end
 
   def check_guess code, guess, board
-    cache = self.compare_codes code, guess
-
+    code_copy = []
+    code.each {|num| code_copy << num}
+    guess_copy = []
+    guess.each {|num| guess_copy << num}
+    cache = self.compare_codes code_copy, guess_copy
+    
     pegs = []
     cache[:number_and_space].times {pegs.push "B"}
     cache[:number].times {pegs.push "W"}
@@ -180,8 +185,7 @@ class Game
 
     if cache[:number_and_space] == 4
       self.code_cracked = true
-      board.display
-      puts "\nCode cracked! Game over!" 
+      puts "\n> Code cracked! Game over!" 
     end
     
   end
@@ -199,33 +203,40 @@ class Game
   end
 
   def run_computer_turn computer, code, board
-    puts "Computer code cracking goes here"
+    until self.turn > 10 || self.code_cracked
+      guess = computer.crack_code board, self.turn
+      self.check_guess code, guess, board
+      board.display
+      self.turn += 1
+
+    end
   end
 
 end
+   
 
 game = Game.new
 board = Board.new
 
-p game.compare_codes(["6", "6", "6", "2"], ["6", "6", "6", "2"])
+#game.compare_codes(["1", "2", "1", "3"], ["1", "1", "2", "2"])
 
 
-#begin puts "Will you make the code, or break the code?\n "
-#response = gets.chomp.upcase
-#if response == "MAKE" || response == "CODEMAKER" || response == "MAKER"
-  #puts "You are the codemaker. The computer will break your code.\n "
-  #player = Player.new true
-  #computer = ComputerPlayer.new false
+puts "> Will you make the code, or break the code?\n "
+response = gets.chomp.upcase
+if response == "MAKE" || response == "CODEMAKER" || response == "MAKER"
+  puts " \n> You are the codemaker. The computer will break your code.\n "
+  player = Player.new true
+  computer = ComputerPlayer.new false
+  player_code = player.generate_code
   #until game.code_cracked
-    #player_code = player.generate_code
-    #game.run_computer_turn computer, player_code, board
+    game.run_computer_turn computer, player_code, board
   #end
-#else
-  #puts "You are the codebreaker. You will break the computer's code.\n " 
-  #computer = ComputerPlayer.new true
-  #player = Player.new false
-  #until game.code_cracked
-    #game.run_player_turn player, computer.code, board
-  #end
-#end
-#end
+else
+  puts " \n> You are the codebreaker. You will break the computer's code.\n "
+  game.explain_rules 
+  computer = ComputerPlayer.new true
+  player = Player.new false
+  until game.code_cracked
+    game.run_player_turn player, computer.code, board
+  end
+end
